@@ -138,7 +138,81 @@ export async function deleteClient(id) {
   const [result] = await db.query('DELETE FROM clients WHERE id = ?', [id]);
   return result.affectedRows; // 0 si rien supprimé, 1 si OK
 }
+
+export async function getClientsByFilters(filters) {
+  let query = 'SELECT id, nom, email FROM clients WHERE 1=1';
+  const params = [];
+
+  if (filters.nom && filters.nom.trim() !== '') {
+    query += ' AND nom LIKE ?';
+    params.push(`%${filters.nom.trim()}%`);
+  }
+
+  if (filters.email && filters.email.trim() !== '') {
+    query += ' AND email LIKE ?';
+    params.push(`%${filters.email.trim()}%`);
+  }
+
+  if (filters.id) {
+    query += ' AND id = ?';
+    params.push(Number(filters.id));
+  }
+
+  const [rows] = await db.query(query, params);
+  return rows;
+}
 ```
+
+---
+
+## 🔎 Filtrage via `req.query` (querystring)
+
+Dans Express, les paramètres passés dans l’URL (partie `? ...`) sont accessibles via `req.query`.
+
+### 1) Exemple de requêtes
+
+- Tous les clients : `GET http://localhost:3000/clients`
+- Filtrer par nom : `GET http://localhost:3000/clients?nom=Al`
+- Filtrer par email : `GET http://localhost:3000/clients?email=example.com`
+- Filtrer par id : `GET http://localhost:3000/clients?id=3`
+- Combiner plusieurs filtres : `GET http://localhost:3000/clients?nom=Al&email=example.com`
+
+### 2) Principe
+
+1. Dans le controller, on récupère les paramètres avec `const filters = req.query`.
+2. On transmet ces filtres au model (ici `getClientsByFilters(filters)`).
+3. Le model construit la requête SQL dynamiquement, tout en gardant des requêtes paramétrées (`?`) pour éviter l’injection SQL.
+
+> Note : `req.query` renvoie généralement des valeurs sous forme de `string` (donc attention à la conversion en `Number` pour `id` si nécessaire).
+
+### 3) Adapter le controller
+
+Ici, on remplace l’appel à `getAllClients()` par `getClientsByFilters(req.query)`.
+
+```js
+// controllers/clientController.js
+import {
+  getAllClients,
+  getClientById,
+  createClient,
+  updateClient,
+  deleteClient,
+  getClientsByFilters
+} from '../models/clientModel.js';
+
+export async function listClients(req, res) {
+  try {
+    // req.query contient { nom, email, id } (valeurs en string)
+    const clients = await getClientsByFilters(req.query);
+    res.json(clients);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+```
+
+Comme `getClientsByFilters()` commence par `WHERE 1=1` et n’ajoute des conditions que si un filtre est présent, la route `GET /clients` renverra bien **tous** les clients quand `req.query` est vide.
 
 ---
 

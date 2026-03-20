@@ -67,6 +67,14 @@ Le cours se base sur **Node.js en mode modules ES** (`"type": "module"`) et sur 
 
 ---
 
+### TP fil rouge (projet complet)
+
+Un TP long “mise en situation” est disponible dans :
+
+- `TP-FIL-ROUGE/TP-projet-api-location-motos.md`
+
+---
+
 ### Démarrer un projet d’exemple (mode modules ES)
 
 Exemple minimal pour lancer une API Express :
